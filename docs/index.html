@@ -182,7 +182,7 @@
         // Build data payload for Google Sheets
         const payload = {
           timestamp: new Date().toISOString(),
-          clip: currentClipName,
+          clipFilename: currentClipName,
           clipNumber: currentIndex + 1,
           // Collect form field values (ensure these IDs match your HTML form input IDs)
           userName: document.getElementById("userName").value.trim(),
