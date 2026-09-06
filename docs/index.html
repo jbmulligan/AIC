@@ -185,9 +185,13 @@
           clip: currentClipName,
           clipNumber: currentIndex + 1,
           // Collect form field values (ensure these IDs match your HTML form input IDs)
-          annotator: document.getElementById("annotator") ? document.getElementById("annotator").value : "",
+          userName: document.getElementById("userName").value.trim(),
+          description: document.getElementById("description").value.trim()
+		/*
+          annotator: document.getElementById("userName") ? document.getElementById("userName").value : "",
           label: document.getElementById("label") ? document.getElementById("label").value : "",
           notes: document.getElementById("notes") ? document.getElementById("notes").value : ""
+	  */
         };
 
         // Post data to Google Apps Script Web App
