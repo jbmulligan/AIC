@@ -60,6 +60,171 @@
   </div>
 
   <script>
+  // ==========================================
+  // 1. CONFIGURATION & STATE
+  // ==========================================
+  // Replace these with your actual Apps Script URL and GitHub Release URL base
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
+  const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
+  const TOTAL_CLIPS = 532;
+
+  let currentIndex = 0; // Internal 0-based index (0 = clip_001.mp4)
+
+  // Format index to 3-digit filename (0 -> "clip_001.mp4")
+  function getClipFilename(index) {
+    const numStr = String(index + 1).padStart(3, '0');
+    return `clip_${numStr}.mp4`;
+  }
+
+  // Parse input string (handles "42", "042", "clip_042.mp4", or "?clip=42")
+  function parseClipNumber(input) {
+    if (!input) return null;
+    const match = String(input).match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num >= 1 && num <= TOTAL_CLIPS) {
+        return num - 1; // Convert 1-based number to 0-based array index
+      }
+    }
+    return null;
+  }
+
+  // ==========================================
+  // 2. CORE NAVIGATION & UI UPDATES
+  // ==========================================
+  function loadClip(index) {
+    currentIndex = index;
+    const filename = getClipFilename(currentIndex);
+
+    const videoPlayer = document.getElementById("videoPlayer");
+    const clipTitle = document.getElementById("clipTitle");
+    const jumpInput = document.getElementById("jumpInput");
+
+    // Update video source and title display
+    if (videoPlayer) videoPlayer.src = BASE_URL + filename;
+    if (clipTitle) clipTitle.textContent = `Clip ${currentIndex + 1} of ${TOTAL_CLIPS} (${filename})`;
+    if (jumpInput) jumpInput.value = currentIndex + 1;
+
+    // Reset the form input fields for the new clip
+    const labelForm = document.getElementById("labelForm");
+    if (labelForm) labelForm.reset();
+
+    // Sync address bar URL without reloading the page (?clip=42)
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('clip', currentIndex + 1);
+    window.history.replaceState({}, '', newUrl);
+  }
+
+  function jumpToClipInput() {
+    const inputVal = document.getElementById("jumpInput").value;
+    const targetIndex = parseClipNumber(inputVal);
+
+    if (targetIndex !== null) {
+      loadClip(targetIndex);
+    } else {
+      alert(`Please enter a valid clip number between 1 and ${TOTAL_CLIPS}.`);
+    }
+  }
+
+  function nextClip() {
+    if (currentIndex < TOTAL_CLIPS - 1) {
+      loadClip(currentIndex + 1);
+    }
+  }
+
+  function prevClip() {
+    if (currentIndex > 0) {
+      loadClip(currentIndex - 1);
+    }
+  }
+
+  // ==========================================
+  // 3. PAGE INITIALIZATION & SUBMIT HANDLER
+  // ==========================================
+  window.addEventListener("DOMContentLoaded", () => {
+    // A. Check URL parameter on load (e.g. ?clip=150)
+    const urlParams = new URLSearchParams(window.location.search);
+    const clipParam = urlParams.get('clip');
+    const parsedIndex = parseClipNumber(clipParam);
+
+    if (parsedIndex !== null) {
+      currentIndex = parsedIndex;
+    }
+
+    // B. Load initial clip
+    loadClip(currentIndex);
+
+    // C. Setup Enter key listener for the Jump Box
+    const jumpInput = document.getElementById("jumpInput");
+    if (jumpInput) {
+      jumpInput.addEventListener("keypress", function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          jumpToClipInput();
+        }
+      });
+    }
+
+    // D. FORM SUBMISSION HANDLER (Google Sheets Sync)
+    const labelForm = document.getElementById("labelForm");
+    if (labelForm) {
+      labelForm.addEventListener("submit", function(e) {
+        e.preventDefault(); // Stop default browser page reload
+
+        const currentClipName = getClipFilename(currentIndex);
+        const submitBtn = labelForm.querySelector("button[type='submit']");
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Saving...";
+        }
+
+        // Build data payload for Google Sheets
+        const payload = {
+          timestamp: new Date().toISOString(),
+          clip: currentClipName,
+          clipNumber: currentIndex + 1,
+          // Collect form field values (ensure these IDs match your HTML form input IDs)
+          annotator: document.getElementById("annotator") ? document.getElementById("annotator").value : "",
+          label: document.getElementById("label") ? document.getElementById("label").value : "",
+          notes: document.getElementById("notes") ? document.getElementById("notes").value : ""
+        };
+
+        // Post data to Google Apps Script Web App
+        fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+        .then(() => {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Save & Next Clip";
+          }
+
+          // Move to the next sequential clip
+          if (currentIndex < TOTAL_CLIPS - 1) {
+            loadClip(currentIndex + 1);
+          } else {
+            alert("Congratulations! You have reached the final clip.");
+          }
+        })
+        .catch((err) => {
+          console.error("Submission Error:", err);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Save & Next Clip";
+          }
+          alert("Failed to save entry. Please check your network connection and try again.");
+        });
+      });
+    }
+  });
+</script>
+
+  <!--
+  <script>
   // Configuration
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
   const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
@@ -154,6 +319,7 @@
     }
   });
 </script>
+-->
 
 <!--
   <script>
