@@ -24,11 +24,17 @@
 <body>
 
   <div class="card">
-    <div class="controls">
-      <button id="prevBtn" onclick="changeClip(-1)">← Previous</button>
-      <span id="clipIndicator" style="font-weight: bold;">Clip 1 of X</span>
-      <button id="nextBtn" onclick="changeClip(1)">Next →</button>
-    </div>
+    <div class="controls" style="margin-top: 15px; display: flex; align-items: center; gap: 10px; justify-content: center;">
+      <button id="prevBtn" onclick="prevClip()">← Previous</button>
+
+      <div style="display: flex; align-items: center; gap: 5px;">
+        <label for="jumpInput"><strong>Go to Clip:</strong></label>
+        <input type="number" id="jumpInput" min="1" max="532" style="width: 70px; padding: 5px;" placeholder="1-532">
+        <button onclick="jumpToClipInput()">Go</button>
+      </div>
+
+      <button id="nextBtn" onclick="nextClip()">Next →</button>
+    </div> 
 
     <!-- Video Player -->
     <video id="videoPlayer" controls autoplay muted>
