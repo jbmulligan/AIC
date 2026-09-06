@@ -105,10 +105,15 @@
     if (clipTitle) clipTitle.textContent = `Clip ${currentIndex + 1} of ${TOTAL_CLIPS} (${filename})`;
     if (jumpInput) jumpInput.value = currentIndex + 1;
 
-    // Reset the form input fields for the new clip
+    // Reset form fields, but restore the saved username
     const labelForm = document.getElementById("labelForm");
-    if (labelForm) labelForm.reset();
+    if (labelForm) {
+      const savedUser = localStorage.getItem("annotator_userName") || "";
+      labelForm.reset();
 
+      const userField = document.getElementById("userName");
+      if (userField) userField.value = savedUser;
+    }
     // Sync address bar URL without reloading the page (?clip=42)
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('clip', currentIndex + 1);
@@ -179,6 +184,11 @@
           submitBtn.textContent = "Saving...";
         }
 
+        const userNameVal = document.getElementById("userName") ? document.getElementById("userName").value : "";
+        if (userNameVal) {
+          localStorage.setItem("annotator_userName", userNameVal);
+        }
+
         // Build data payload for Google Sheets
         const payload = {
           timestamp: new Date().toISOString(),
@@ -224,6 +234,17 @@
         });
       });
     }
+    // Restore saved username on page load
+    const userField = document.getElementById("userName");
+    if (userField) {
+      userField.value = localStorage.getItem("annotator_userName") || "";
+
+      // Save name immediately if they edit it directly
+      userField.addEventListener("input", function() {
+        localStorage.setItem("annotator_userName", this.value);
+      });
+    }
+
   });
 </script>
 
