@@ -115,9 +115,10 @@ function displayClipAnnotations(clipIndex) {
   } else {
     let html = `<ul style="margin: 0; padding-left: 20px;">`;
     matches.forEach(item => {
+console.log("item: "+JSON.stringify(item));
       const user = item.userName || "Anonymous";
       const lbl = item.label ? `<strong>[${item.label}]</strong> ` : "";
-      const notes = item.notes ? item.notes : "(No notes)";
+      const notes = item.notes ? item.notes : "";
       html += `<style="margin-bottom: 4px;"><strong>${user}:</strong> ${lbl}${notes}</li>`;
     });
     html += `</ul>`;
