@@ -1,0 +1,49 @@
+name: Build and Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # or master, depending on your default branch name
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required so git describe can read tags/commit history
+
+      - name: Generate Version String
+        run: |
+          # Fetch git version tag (falls back to short commit hash if no tag exists)
+          VERSION=$(git describe --tags --always --dirty || echo "dev")
+          echo "Automated Version: $VERSION"
+          
+          # Replace placeholder in index.html
+          sed -i "s/__VERSION__/$VERSION/g" index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'  # Deploy root directory
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
