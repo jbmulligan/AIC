@@ -37,7 +37,7 @@
     </div> 
 
     <!-- Video Player -->
-    <video id="videoPlayer" controls autoplay muted>
+    <video id="videoPlayer" controls autoplay muted playsinline style="max-width: 100%; height: auto;">
       <source id="videoSource" src="" type="video/mp4">
       Your browser does not support HTML5 video.
     </video>
@@ -93,6 +93,47 @@
   // 2. CORE NAVIGATION & UI UPDATES
   // ==========================================
   function loadClip(index) {
+  currentIndex = index;
+  const filename = getClipFilename(currentIndex);
+
+  const videoPlayer = document.getElementById("videoPlayer");
+  const clipTitle = document.getElementById("clipTitle");
+  const jumpInput = document.getElementById("jumpInput");
+
+  if (videoPlayer) {
+    videoPlayer.src = BASE_URL + filename;
+    videoPlayer.load(); // Force Safari to reset media decoder state
+
+    // Safely attempt to play and catch Safari autoplay restrictions
+    const playPromise = videoPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.warn("Safari auto-play prevented:", error);
+        // The controls attribute remains visible so the user can tap play manually if needed
+      });
+    }
+  }
+
+  if (clipTitle) clipTitle.textContent = `Clip ${currentIndex + 1} of ${TOTAL_CLIPS} (${filename})`;
+  if (jumpInput) jumpInput.value = currentIndex + 1;
+
+  // Preserve username across form resets using localStorage
+  const labelForm = document.getElementById("labelForm");
+  if (labelForm) {
+    const savedUser = localStorage.getItem("annotator_userName") || "";
+    labelForm.reset();
+
+    const userField = document.getElementById("userName");
+    if (userField) userField.value = savedUser;
+  }
+
+  // Sync clean address bar URL (?clip=42)
+  const newUrl = new URL(window.location);
+  newUrl.searchParams.set('clip', currentIndex + 1);
+  window.history.replaceState({}, '', newUrl);
+}
+  /*
+  function loadClip(index) {
     currentIndex = index;
     const filename = getClipFilename(currentIndex);
 
@@ -119,6 +160,7 @@
     newUrl.searchParams.set('clip', currentIndex + 1);
     window.history.replaceState({}, '', newUrl);
   }
+  */
 
   function jumpToClipInput() {
     const inputVal = document.getElementById("jumpInput").value;
