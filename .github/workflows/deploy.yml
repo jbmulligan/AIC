@@ -3,7 +3,8 @@ name: Build and Deploy GitHub Pages
 on:
   push:
     branches:
-      - main  # or master, depending on your default branch name
+      - main
+  workflow_dispatch: # Allows manual trigger from Actions tab if ever needed
 
 permissions:
   contents: read
@@ -32,8 +33,8 @@ jobs:
           VERSION=$(git describe --tags --always --dirty || echo "dev")
           echo "Automated Version: $VERSION"
           
-          # Replace placeholder in index.html
-          sed -i "s/__VERSION__/$VERSION/g" index.html
+          # Replace placeholder in docs/index.html
+          sed -i "s/__VERSION__/$VERSION/g" docs/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -41,7 +42,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'  # Deploy root directory
+          path: 'docs'  # <-- Set path to your docs directory
 
       - name: Deploy to GitHub Pages
         id: deployment
