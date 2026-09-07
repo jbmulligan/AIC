@@ -41,7 +41,15 @@
       <source id="videoSource" src="" type="video/mp4">
       Your browser does not support HTML5 video.
     </video>
+ 
+    <!-- Container for displaying existing annotations -->
+<div id="existingAnnotations" style="margin-top: 15px; padding: 12px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;">
+  <strong>Existing Annotations:</strong>
+  <div id="annotationList" style="margin-top: 8px; font-size: 0.9em; color: #333;">
+    <em>Loading existing annotations...</em>
+  </div>
 
+</div>
     <!-- Labeling Form -->
     <form id="labelForm" onsubmit="submitLabel(event)">
       <div class="form-group">
@@ -64,11 +72,65 @@
 </div>
 
   <script>
+
+	  // fetching existing annotations
+
+	  let allAnnotations = []; // Cache for fetched spreadsheet data
+
+// Fetch all existing annotations from Google Sheets
+function fetchAnnotations() {
+  const listEl = document.getElementById("annotationList");
+  if (listEl) listEl.innerHTML = "<em>Loading existing annotations...</em>";
+
+  fetch(APPS_SCRIPT_URL)
+    .then(response => response.json())
+    .then(result => {
+      if (result.status === "success" && Array.isArray(result.data)) {
+        allAnnotations = result.data;
+        displayClipAnnotations(currentIndex);
+      }
+    })
+    .catch(err => {
+      console.warn("Could not fetch annotations:", err);
+      const listEl = document.getElementById("annotationList");
+      if (listEl) listEl.innerHTML = "<span style='color: #888;'>Unable to load existing annotations.</span>";
+    });
+}
+
+// Display existing annotations for the current clip
+function displayClipAnnotations(clipIndex) {
+  const listEl = document.getElementById("annotationList");
+  if (!listEl) return;
+
+  const clipNum = clipIndex + 1;
+  const currentFilename = getClipFilename(clipIndex);
+
+  // Match entries by clip number or filename
+  const matches = allAnnotations.filter(item =>
+    String(item.clipNumber) === String(clipNum) || item.clip === currentFilename
+  );
+
+  if (matches.length === 0) {
+    listEl.innerHTML = "<span style='color: #28a745; font-weight: bold;'>Unannotated</span> — No entries for this clip yet.";
+  } else {
+    let html = `<ul style="margin: 0; padding-left: 20px;">`;
+    matches.forEach(item => {
+      const user = item.userName || "Anonymous";
+      const lbl = item.label ? `<strong>[${item.label}]</strong> ` : "";
+      const notes = item.notes ? item.notes : "(No notes)";
+      html += `<style="margin-bottom: 4px;"><strong>${user}:</strong> ${lbl}${notes}</li>`;
+    });
+    html += `</ul>`;
+    listEl.innerHTML = html;
+  }
+}
+
   // ==========================================
   // 1. CONFIGURATION & STATE
   // ==========================================
   // Replace these with your actual Apps Script URL and GitHub Release URL base
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
+    // OLD const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxd8rzMg7aa5--k9VDFfLpbo1qaNnKQxwUqHddb5ZtBlZCDPketYHPwANzVvjmpQ1MxCg/exec";
   const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
   const TOTAL_CLIPS = 532;
 
@@ -130,6 +192,8 @@
     const userField = document.getElementById("userName");
     if (userField) userField.value = savedUser;
   }
+  // Update displayed annotations for this clip
+  displayClipAnnotations(currentIndex);
 
   // Sync clean address bar URL (?clip=42)
   const newUrl = new URL(window.location);
@@ -193,6 +257,9 @@
   // 3. PAGE INITIALIZATION & SUBMIT HANDLER
   // ==========================================
   window.addEventListener("DOMContentLoaded", () => {
+	  // Fetch existing annotations from spreadsheet
+  fetchAnnotations();
+
     // A. Check URL parameter on load (e.g. ?clip=150)
     const urlParams = new URLSearchParams(window.location.search);
     const clipParam = urlParams.get('clip');
@@ -262,6 +329,8 @@
             submitBtn.disabled = false;
             submitBtn.textContent = "Save & Next Clip";
           }
+	  // remember this annotation in case we navigate back
+	allAnnotations.push(payload);
 
           // Move to the next sequential clip
           if (currentIndex < TOTAL_CLIPS - 1) {
