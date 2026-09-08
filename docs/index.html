@@ -208,8 +208,11 @@ console.log("loadClip: currentIndex = "+currentIndex);
   const jumpInput = document.getElementById("jumpInput");
 
   if (videoPlayer) {
+	  videoPlayer.pause();
+
     videoPlayer.src = BASE_URL + filename;
     videoPlayer.load(); // Force Safari to reset media decoder state
+	    videoPlayer.currentTime = 0;
 
     // Safely attempt to play and catch Safari autoplay restrictions
     const playPromise = videoPlayer.play();
@@ -217,6 +220,7 @@ console.log("loadClip: currentIndex = "+currentIndex);
       playPromise.catch(error => {
         console.warn("Safari auto-play prevented:", error);
         // The controls attribute remains visible so the user can tap play manually if needed
+		videoPlayer.controls = true;
       });
     }
   }
