@@ -34,6 +34,12 @@
       </div>
 
       <button id="nextBtn" onclick="nextClip()">Next →</button>
+
+    <label style="margin-left: 15px; font-size: 0.9em; cursor: pointer;">
+  <input type="checkbox" id="unlabeledOnlyToggle" style="cursor: pointer;">
+  Unlabeled clips only
+</label>
+
     </div> 
 
     <!-- Video Player -->
@@ -73,6 +79,43 @@
 
   <script>
 
+	  // Helper: Checks if a clip index has existing annotations in the cache
+function isClipAnnotated(clipIndex) {
+  const filename = getClipFilename(clipIndex);
+  return allAnnotations.some(item => item.clip === filename);
+}
+
+// Find next valid clip index based on "Unlabeled clips only" state
+function getNextClipIndex(fromIndex) {
+  const unlabeledOnly = document.getElementById("unlabeledOnlyToggle")?.checked;
+  let idx = fromIndex + 1;
+
+  while (idx < TOTAL_CLIPS) {
+    if (!unlabeledOnly || !isClipAnnotated(idx)) {
+      return idx;
+    }
+    idx++;
+  }
+
+  // Return last clip if no more unlabeled clips remain ahead
+  return TOTAL_CLIPS - 1;
+}
+
+// Find previous valid clip index based on "Unlabeled clips only" state
+function getPreviousClipIndex(fromIndex) {
+  const unlabeledOnly = document.getElementById("unlabeledOnlyToggle")?.checked;
+  let idx = fromIndex - 1;
+
+  while (idx >= 0) {
+    if (!unlabeledOnly || !isClipAnnotated(idx)) {
+      return idx;
+    }
+    idx--;
+  }
+
+  // Return first clip if no prior unlabeled clips exist
+  return 0;
+}
 	  // fetching existing annotations
 
 	  let allAnnotations = []; // Cache for fetched spreadsheet data
@@ -239,16 +282,21 @@ function displayClipAnnotations(clipIndex) {
   }
 
   function nextClip() {
-    if (currentIndex < TOTAL_CLIPS - 1) {
-      loadClip(currentIndex + 1);
+    // Next Clip Button
+    const nextIdx = getNextClipIndex(currentIndex);
+    if (nextIdx !== currentIndex) {
+      loadClip(nextIdx);
     }
   }
 
   function prevClip() {
-    if (currentIndex > 0) {
-      loadClip(currentIndex - 1);
+    // Previous Clip Button
+    const prevIdx = getPreviousClipIndex(currentIndex);
+    if (prevIdx !== currentIndex) {
+      loadClip(prevIdx);
     }
   }
+
 
   // ==========================================
   // 3. PAGE INITIALIZATION & SUBMIT HANDLER
@@ -268,6 +316,14 @@ function displayClipAnnotations(clipIndex) {
 
     // B. Load initial clip
     loadClip(currentIndex);
+
+    // Event listener for unlabelled clip checkbox
+    document.getElementById("unlabeledOnlyToggle")?.addEventListener("change", (e) => {
+  if (e.target.checked && isClipAnnotated(currentIndex)) {
+    const nextIdx = getNextClipIndex(currentIndex);
+    loadClip(nextIdx);
+  }
+});
 
     // C. Setup Enter key listener for the Jump Box
     const jumpInput = document.getElementById("jumpInput");
@@ -330,8 +386,10 @@ function displayClipAnnotations(clipIndex) {
 	allAnnotations.push(payload);
 
           // Move to the next sequential clip
-          if (currentIndex < TOTAL_CLIPS - 1) {
-            loadClip(currentIndex + 1);
+        const nextIdx = getNextClipIndex(currentIndex);
+
+          if (nextIdx < TOTAL_CLIPS - 1) {
+            loadClip(nextIdx);
           } else {
             alert("Congratulations! You have reached the final clip.");
           }
