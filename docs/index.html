@@ -106,9 +106,7 @@ function displayClipAnnotations(clipIndex) {
   const currentFilename = getClipFilename(clipIndex);
 
   // Match entries by clip number or filename
-  const matches = allAnnotations.filter(item =>
-    String(item.clipNumber) === String(clipNum) || item.clip === currentFilename
-  );
+  const matches = allAnnotations.filter(item => item.clip === currentFilename);
 
   if (matches.length === 0) {
     listEl.innerHTML = "<span style='color: #28a745; font-weight: bold;'>Unannotated</span> — No entries for this clip yet.";
@@ -130,8 +128,7 @@ console.log("item: "+JSON.stringify(item));
   // 1. CONFIGURATION & STATE
   // ==========================================
   // Replace these with your actual Apps Script URL and GitHub Release URL base
-    // OLD const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxd8rzMg7aa5--k9VDFfLpbo1qaNnKQxwUqHddb5ZtBlZCDPketYHPwANzVvjmpQ1MxCg/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyiDny-q_hOxoagir6qpbjv4mZb8xjLDTCdazAjzPxIUdYBb3d2-a9acE8-hv9PY8aKWg/exec";
   const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
   const TOTAL_CLIPS = 532;
 
