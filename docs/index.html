@@ -82,7 +82,7 @@
 	  // Helper: Checks if a clip index has existing annotations in the cache
 function isClipAnnotated(clipIndex) {
   const filename = getClipFilename(clipIndex);
-  return allAnnotations.some(item => item.clip === filename);
+  return allAnnotations.some(item => item.clipFilename === filename);
 }
 
 // Find next valid clip index based on "Unlabeled clips only" state
@@ -149,7 +149,8 @@ function displayClipAnnotations(clipIndex) {
   const currentFilename = getClipFilename(clipIndex);
 
   // Match entries by clip number or filename
-  const matches = allAnnotations.filter(item => item.clip === currentFilename);
+console.log("currentFilename = "+currentFilename);
+  const matches = allAnnotations.filter(item => item.clipFilename === currentFilename);
 
   if (matches.length === 0) {
     listEl.innerHTML = "<span style='color: #28a745; font-weight: bold;'>Unannotated</span> — No entries for this clip yet.";
@@ -157,9 +158,8 @@ function displayClipAnnotations(clipIndex) {
     let html = `<ul style="margin: 0; padding-left: 20px;">`;
     matches.forEach(item => {
       const user = item.userName || "Anonymous";
-      const lbl = item.label ? `<strong>[${item.label}]</strong> ` : "";
-      const notes = item.notes ? item.notes : "";
-      html += `<style="margin-bottom: 4px;"><strong>${user}:</strong> ${lbl}${notes}</li>`;
+      const desc = item.description ? item.description : "";
+      html += `<style="margin-bottom: 4px;"><strong>${user}:</strong> ${desc}</li>`;
     });
     html += `</ul>`;
     listEl.innerHTML = html;
@@ -170,7 +170,7 @@ function displayClipAnnotations(clipIndex) {
   // 1. CONFIGURATION & STATE
   // ==========================================
   // Replace these with your actual Apps Script URL and GitHub Release URL base
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyiDny-q_hOxoagir6qpbjv4mZb8xjLDTCdazAjzPxIUdYBb3d2-a9acE8-hv9PY8aKWg/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzW8PaI2BA8EOAyR5F35HQEIMv5N9mAfR2oFiRjlt2KkRaw4Yfc819fdcKicSwMQUm7mw/exec";
   const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
   const TOTAL_CLIPS = 532;
 
@@ -200,6 +200,7 @@ function displayClipAnnotations(clipIndex) {
   // ==========================================
   function loadClip(index) {
   currentIndex = index;
+console.log("loadClip: currentIndex = "+currentIndex);
   const filename = getClipFilename(currentIndex);
 
   const videoPlayer = document.getElementById("videoPlayer");
@@ -240,35 +241,6 @@ function displayClipAnnotations(clipIndex) {
   newUrl.searchParams.set('clip', currentIndex + 1);
   window.history.replaceState({}, '', newUrl);
 }
-  /*
-  function loadClip(index) {
-    currentIndex = index;
-    const filename = getClipFilename(currentIndex);
-
-    const videoPlayer = document.getElementById("videoPlayer");
-    const clipTitle = document.getElementById("clipTitle");
-    const jumpInput = document.getElementById("jumpInput");
-
-    // Update video source and title display
-    if (videoPlayer) videoPlayer.src = BASE_URL + filename;
-    if (clipTitle) clipTitle.textContent = `Clip ${currentIndex + 1} of ${TOTAL_CLIPS} (${filename})`;
-    if (jumpInput) jumpInput.value = currentIndex + 1;
-
-    // Reset form fields, but restore the saved username
-    const labelForm = document.getElementById("labelForm");
-    if (labelForm) {
-      const savedUser = localStorage.getItem("annotator_userName") || "";
-      labelForm.reset();
-
-      const userField = document.getElementById("userName");
-      if (userField) userField.value = savedUser;
-    }
-    // Sync address bar URL without reloading the page (?clip=42)
-    const newUrl = new URL(window.location);
-    newUrl.searchParams.set('clip', currentIndex + 1);
-    window.history.replaceState({}, '', newUrl);
-  }
-  */
 
   function jumpToClipInput() {
     const inputVal = document.getElementById("jumpInput").value;
@@ -359,15 +331,10 @@ function displayClipAnnotations(clipIndex) {
         const payload = {
           timestamp: new Date().toISOString(),
           clipFilename: currentClipName,
-          clipNumber: currentIndex + 1,
+          //clipNumber: currentIndex + 1,	// not used in spreadsheet?
           // Collect form field values (ensure these IDs match your HTML form input IDs)
           userName: document.getElementById("userName").value.trim(),
           description: document.getElementById("description").value.trim()
-		/*
-          annotator: document.getElementById("userName") ? document.getElementById("userName").value : "",
-          label: document.getElementById("label") ? document.getElementById("label").value : "",
-          notes: document.getElementById("notes") ? document.getElementById("notes").value : ""
-	  */
         };
 
         // Post data to Google Apps Script Web App
@@ -418,187 +385,6 @@ function displayClipAnnotations(clipIndex) {
   });
 </script>
 
-  <!--
-  <script>
-  // Configuration
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
-  const BASE_URL = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
-  const TOTAL_CLIPS = 532;
-
-  let currentIndex = 0; // 0-indexed internally
-
-  // Helper to format index (0 -> "clip_001.mp4")
-  function getClipFilename(index) {
-    const numStr = String(index + 1).padStart(3, '0');
-    return `clip_${numStr}.mp4`;
-  }
-
-  // Helper to parse clip index from input string (handles "42", "042", "clip_042.mp4")
-  function parseClipNumber(input) {
-    if (!input) return null;
-    const match = String(input).match(/\d+/);
-    if (match) {
-      const num = parseInt(match[0], 10);
-      if (num >= 1 && num <= TOTAL_CLIPS) {
-        return num - 1; // Convert 1-based to 0-based index
-      }
-    }
-    return null;
-  }
-
-  // 1. Initialize Player and Check URL Parameters on Load
-  window.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const clipParam = urlParams.get('clip'); // e.g. ?clip=42 or ?clip=clip_042.mp4
-
-    const parsedIndex = parseClipNumber(clipParam);
-    if (parsedIndex !== null) {
-      currentIndex = parsedIndex;
-    }
-
-    loadClip(currentIndex);
-  });
-
-  // 2. Core Load Function
-  function loadClip(index) {
-    currentIndex = index;
-    const filename = getClipFilename(currentIndex);
-    const videoPlayer = document.getElementById("videoPlayer");
-    const clipTitle = document.getElementById("clipTitle");
-    const jumpInput = document.getElementById("jumpInput");
-
-    // Update UI elements
-    videoPlayer.src = BASE_URL + filename;
-    if (clipTitle) clipTitle.textContent = `Clip ${currentIndex + 1} of ${TOTAL_CLIPS} (${filename})`;
-    if (jumpInput) jumpInput.value = currentIndex + 1;
-
-    // Clear previous form fields for the new clip
-    document.getElementById("labelForm").reset();
-
-    // Sync URL address bar without reloading the page
-    const newUrl = new URL(window.location);
-    newUrl.searchParams.set('clip', currentIndex + 1);
-    window.history.replaceState({}, '', newUrl);
-  }
-
-  // 3. Jump to Clip Action
-  function jumpToClipInput() {
-    const inputVal = document.getElementById("jumpInput").value;
-    const targetIndex = parseClipNumber(inputVal);
-
-    if (targetIndex !== null) {
-      loadClip(targetIndex);
-    } else {
-      alert(`Please enter a valid clip number between 1 and ${TOTAL_CLIPS}.`);
-    }
-  }
-
-  // 4. Navigation Controls
-  function nextClip() {
-    if (currentIndex < TOTAL_CLIPS - 1) {
-      loadClip(currentIndex + 1);
-    }
-  }
-
-  function prevClip() {
-    if (currentIndex > 0) {
-      loadClip(currentIndex - 1);
-    }
-  }
-
-  // Allow pressing "Enter" inside the jump input box
-  document.getElementById("jumpInput")?.addEventListener("keypress", function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      jumpToClipInput();
-    }
-  });
-</script>
--->
-
-<!--
-  <script>
-    // 1. Configuration
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLwEcNRUy0MMk7k3KVSDoLGAXx19PJMt-rIzdd0sKSPVAfxuhdMVM0KRTkQIvwYQvSNw/exec";
-    
-    // Array of filenames (e.g. ['clip_001.mp4', 'clip_002.mp4', ...])
-    // Or generate dynamically if numbered sequentially (e.g., clip_001.mp4 to clip_300.mp4)
-    const videoFolder = "https://github.com/jbmulligan/AIC/releases/download/v1.0.0/";
-    const totalClips = 532; 
-    const clipList = Array.from({ length: totalClips }, (_, i) => 
-      `clip_${String(i + 1).padStart(3, '0')}.mp4`
-    );
-
-    let currentIndex = 0;
-
-    // 2. Initialize Player
-    function loadClip(index) {
-      if (index < 0 || index >= clipList.length) return;
-      currentIndex = index;
-      
-      const filename = clipList[currentIndex];
-      document.getElementById("videoSource").src = videoFolder + filename;
-      document.getElementById("videoPlayer").load();
-      document.getElementById("clipIndicator").innerText = `${filename} (${currentIndex + 1} of ${clipList.length})`;
-      
-      // Reset form
-      document.getElementById("description").value = "";
-      document.getElementById("statusMsg").innerText = "";
-      document.getElementById("prevBtn").disabled = (currentIndex === 0);
-      document.getElementById("nextBtn").disabled = (currentIndex === clipList.length - 1);
-    }
-
-    function changeClip(direction) {
-      loadClip(currentIndex + direction);
-    }
-
-    // 3. Submit Label to Google Sheets
-    async function submitLabel(event) {
-      event.preventDefault();
-      const submitBtn = document.getElementById("submitBtn");
-      const statusMsg = document.getElementById("statusMsg");
-      
-      submitBtn.disabled = true;
-      statusMsg.className = "status";
-      statusMsg.innerText = "Saving...";
-
-      const payload = {
-        clipFilename: clipList[currentIndex],
-        userName: document.getElementById("userName").value.trim(),
-        description: document.getElementById("description").value.trim()
-      };
-
-      try {
-        // Use no-cors mode if cross-origin preflight gives issues, or standard fetch
-        await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors", 
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        statusMsg.className = "status success";
-        statusMsg.innerText = "Saved successfully!";
-        
-        // Auto-advance to next clip after 1 second
-        setTimeout(() => {
-          if (currentIndex < clipList.length - 1) {
-            changeClip(1);
-          }
-          submitBtn.disabled = false;
-        }, 800);
-
-      } catch (err) {
-        statusMsg.className = "status error";
-        statusMsg.innerText = "Failed to save. Please try again.";
-        submitBtn.disabled = false;
-      }
-    }
-
-    // Load first clip on page load
-    window.onload = () => loadClip(0);
-  </script>
-  -->
 </body>
 </html>
 
