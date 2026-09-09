@@ -44,7 +44,6 @@
 
     <!-- Video Player -->
     <video id="videoPlayer" controls autoplay muted preload="auto" playsinline webkit-playsinline style="max-width: 100%; height: auto;">
-      <source id="videoSource" src="" type="video/mp4">
       Your browser does not support HTML5 video.
     </video>
  
@@ -208,11 +207,10 @@ console.log("loadClip: currentIndex = "+currentIndex);
   const jumpInput = document.getElementById("jumpInput");
 
   if (videoPlayer) {
-	  videoPlayer.pause();
-
+    videoPlayer.pause();
     videoPlayer.src = BASE_URL + filename;
     videoPlayer.load(); // Force Safari to reset media decoder state
-	    videoPlayer.currentTime = 0;
+    videoPlayer.currentTime = 0;
 
     // Safely attempt to play and catch Safari autoplay restrictions
     const playPromise = videoPlayer.play();
