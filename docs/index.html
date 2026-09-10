@@ -154,7 +154,7 @@ function applyFilters(resetIndex = true) {
   const query = document.getElementById('labelSearch').value.trim().toLowerCase();
   const showUnlabelledOnly = document.getElementById('unlabelledOnly').checked;
 
-  filteredClips = allClips.filter(clip => {
+  filteredClips = allAnnotations.filter(clip => {
     const labelText = (clip.description || clip.label || '').trim();
     const isUnlabelled = labelText === '' || labelText.toLowerCase() === 'unlabelled';
 
@@ -194,14 +194,14 @@ function updateSearchUI() {
   // 1. Get current clip from filtered array
   const currentClip = filteredClips[activeIndex];
 
-  // 2. Find its 1-based index in the master allClips array
-  const masterIndex = allClips.findIndex(c => c.filename === currentClip.clipFilename) + 1;
+  // 2. Find its 1-based index in the master allAnnotations array
+  const masterIndex = allAnnotations.findIndex(c => c.filename === currentClip.clipFilename) + 1;
 
   // 3. Update the UI index widget / counter display
   // e.g., "Clip 14 of 282 (Filter result 2 of 5)"
   const indexWidget = document.getElementById('clipIndexDisplay'); // adjust ID to match your HTML
   if (indexWidget) {
-    indexWidget.textContent = `Clip ${masterIndex} of ${allClips.length} (${activeIndex + 1}/${filteredClips.length} filtered)`;
+    indexWidget.textContent = `Clip ${masterIndex} of ${allAnnotations.length} (${activeIndex + 1}/${filteredClips.length} filtered)`;
   }
 
   // 4. Construct updated URL with clip number + active filter state
@@ -464,7 +464,7 @@ console.log("loadClip: currentIndex = "+currentIndex);
 
   /*
      function onCsvLoaded(parsedData) {
-  allClips = parsedData;
+  allAnnotations = parsedData;
 
   // Read initial query parameters from URL
   const urlParams = new URLSearchParams(window.location.search);
@@ -497,13 +497,15 @@ console.log("loadClip: currentIndex = "+currentIndex);
   const unlabelledParam = urlParams.get('unlabelled') === '1';
   const targetClipNum = parseInt(urlParams.get('clip'), 10);
 
-  //  const urlParams = new URLSearchParams(window.location.search);
-    //const clipParam = urlParams.get('clip');
+  /*
+    const urlParams = new URLSearchParams(window.location.search);
+    const clipParam = urlParams.get('clip');
     const parsedIndex = parseClipNumber(clipParam);
 
     if (parsedIndex !== null) {
       currentIndex = parsedIndex;
     }
+    */
 
   // Set initial control values from URL parameters
   const searchInput = document.getElementById('labelSearch');
@@ -516,8 +518,8 @@ console.log("loadClip: currentIndex = "+currentIndex);
   applyFilters(false); // Pass false to prevent auto-resetting activeIndex to 0
 
   // If a specific ?clip=N was in the URL, set activeIndex to point to that item within filteredClips
-  if (targetClipNum && targetClipNum > 0 && targetClipNum <= allClips.length) {
-    const targetClip = allClips[targetClipNum - 1];
+  if (targetClipNum && targetClipNum > 0 && targetClipNum <= allAnnotations.length) {
+    const targetClip = allAnnotations[targetClipNum - 1];
     const matchIndex = filteredClips.findIndex(c => c.filename === targetClip.filename);
 
     if (matchIndex !== -1) {
