@@ -105,6 +105,10 @@
 let filteredClips = [];  // Currently active subset
 let activeIndex = 0;     // Pointer index in filteredClips
 
+function initFilter(){
+  filteredClips = [...allAnnotations];
+}
+
 /**
  * Evaluates both the search query AND the "Unlabelled Only" checkbox.
  */
