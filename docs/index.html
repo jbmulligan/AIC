@@ -35,12 +35,33 @@
 
       <button id="nextBtn" onclick="nextClip()">Next →</button>
 
-    <label style="margin-left: 15px; font-size: 0.9em; cursor: pointer;">
-  <input type="checkbox" id="unlabeledOnlyToggle" style="cursor: pointer;">
-  Unlabeled clips only
-</label>
-
     </div> 
+    <!-- Label Search Control -->
+    <!-- Filter & Search Controls -->
+<div class="filter-container" style="margin: 10px 0; display: flex; align-items: center; gap: 15px;">
+  <div>
+    <label for="labelSearch">Filter by Label:</label>
+    <input
+      type="text"
+      id="labelSearch"
+      placeholder="Type to filter..."
+      oninput="applyFilters()"
+      style="padding: 6px 10px; font-size: 14px; width: 200px;"
+    />
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 5px;">
+    <input
+      type="checkbox"
+      id="unlabelledOnly"
+      onchange="applyFilters()"
+    />
+    <label for="unlabelledOnly" style="cursor: pointer;">Unlabelled Only</label>
+  </div>
+
+  <span id="searchCount" style="font-size: 13px; color: #666;"></span>
+</div>
+
 
     <!-- Video Player -->
     <video id="videoPlayer" controls autoplay muted preload="auto" playsinline webkit-playsinline style="max-width: 100%; height: auto;">
@@ -78,7 +99,102 @@
 
   <script>
 
-	  // Helper: Checks if a clip index has existing annotations in the cache
+	  // Global State Variables
+let filteredClips = [];  // Currently active subset
+let activeIndex = 0;     // Pointer index in filteredClips
+
+/**
+ * Evaluates both the search query AND the "Unlabelled Only" checkbox.
+ */
+function applyFilters() {
+  const query = document.getElementById('labelSearch').value.trim().toLowerCase();
+  const showUnlabelledOnly = document.getElementById('unlabelledOnly').checked;
+
+  filteredClips = allAnnotations.filter(clip => {
+    // 1. Get the description string (fallback to 'label' column if present)
+    const labelText = (clip.description || clip.label || '').trim();
+
+    // Check if the clip is considered unlabelled
+    const isUnlabelled = labelText === '' || labelText.toLowerCase() === 'unlabelled';
+
+    // 2. Evaluate 'Unlabelled Only' condition
+    if (showUnlabelledOnly && !isUnlabelled) {
+      return false;
+    }
+
+    // 3. Evaluate Text Search condition (skip search check if searching for unlabelled)
+    if (query !== '') {
+      return labelText.toLowerCase().includes(query);
+    }
+
+    return true;
+  });
+
+  // Reset navigation pointer to the first item in the new filtered set
+  activeIndex = 0;
+  updateSearchUI();
+
+  if (filteredClips.length > 0) {
+    loadCurrentClip();
+  } else {
+    showNoResultsMessage();
+  }
+}
+
+/**
+ * Updates status text and UI counts.
+ */
+function updateSearchUI() {
+  const countSpan = document.getElementById('searchCount');
+  if (countSpan) {
+    countSpan.textContent = `Showing ${filteredClips.length} of ${allAnnotations.length} clips`;
+  }
+}
+
+/**
+ * Loads the active clip from filteredClips.
+ */
+function loadCurrentClip() {
+  if (filteredClips.length === 0) return;
+
+  const currentClip = filteredClips[activeIndex];
+  const videoUrl = BASE_URL + currentClip.filename;
+
+  const videoPlayer = document.getElementById('videoPlayer');
+  videoPlayer.src = videoUrl;
+  videoPlayer.load();
+  videoPlayer.play().catch(err => {
+    console.log("Auto-play prevented or paused:", err);
+  });
+
+  // Display clip description or placeholder in UI
+  const displayLabel = currentClip.description || "Unlabelled";
+  document.getElementById('clipLabelDisplay').textContent = displayLabel;
+}
+
+/**
+ * Navigation handlers
+ */
+function nextClip() {
+  if (filteredClips.length === 0) return;
+  activeIndex = (activeIndex + 1) % filteredClips.length;
+  loadCurrentClip();
+}
+
+function prevClip() {
+  if (filteredClips.length === 0) return;
+  activeIndex = (activeIndex - 1 + filteredClips.length) % filteredClips.length;
+  loadCurrentClip();
+}
+
+function showNoResultsMessage() {
+  const videoPlayer = document.getElementById('videoPlayer');
+  videoPlayer.pause();
+  videoPlayer.src = "";
+  document.getElementById('clipLabelDisplay').textContent = "No matching clips found";
+}
+
+// Helper: Checks if a clip index has existing annotations in the cache
 function isClipAnnotated(clipIndex) {
   const filename = getClipFilename(clipIndex);
   return allAnnotations.some(item => item.clipFilename === filename);
@@ -115,9 +231,9 @@ function getPreviousClipIndex(fromIndex) {
   // Return first clip if no prior unlabeled clips exist
   return 0;
 }
-	  // fetching existing annotations
 
-	  let allAnnotations = []; // Cache for fetched spreadsheet data
+// fetching existing annotations
+let allAnnotations = []; // Cache for fetched spreadsheet data
 
 // Fetch all existing annotations from Google Sheets
 function fetchAnnotations() {
@@ -129,6 +245,7 @@ function fetchAnnotations() {
     .then(result => {
       if (result.status === "success" && Array.isArray(result.data)) {
         allAnnotations = result.data;
+	initFilter();
         displayClipAnnotations(currentIndex);
       }
     })
@@ -198,7 +315,7 @@ console.log("currentFilename = "+currentFilename);
   // ==========================================
   // 2. CORE NAVIGATION & UI UPDATES
   // ==========================================
-  function loadClip(index) {
+function loadClip(index) {
   currentIndex = index;
 console.log("loadClip: currentIndex = "+currentIndex);
   const filename = getClipFilename(currentIndex);
@@ -256,6 +373,7 @@ console.log("loadClip: currentIndex = "+currentIndex);
     }
   }
 
+  /*
   function nextClip() {
     // Next Clip Button
     const nextIdx = getNextClipIndex(currentIndex);
@@ -271,6 +389,7 @@ console.log("loadClip: currentIndex = "+currentIndex);
       loadClip(prevIdx);
     }
   }
+  */
 
 
   // ==========================================
