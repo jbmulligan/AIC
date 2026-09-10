@@ -141,6 +141,7 @@ function applyFilters() {
   updateSearchUI();
 
   if (filteredClips.length > 0) {
+console.log("calling loadCurrentClip");
     loadCurrentClip();
   } else {
     showNoResultsMessage();
@@ -163,7 +164,9 @@ function updateSearchUI() {
 function loadCurrentClip() {
   if (filteredClips.length === 0) return;
 
+console.log("loadCurrentClip: activeIndex = "+activeIndex);
   const currentClip = filteredClips[activeIndex];
+console.log("loadCurrentClip: currentClip = "+JSON.stringify(currentClip));
   const videoUrl = BASE_URL + currentClip.filename;
 
   const videoPlayer = document.getElementById('videoPlayer');
