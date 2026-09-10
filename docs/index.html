@@ -112,6 +112,7 @@ function initFilter(){
 /**
  * Evaluates both the search query AND the "Unlabelled Only" checkbox.
  */
+	  /*
 function applyFilters() {
   const query = document.getElementById('labelSearch').value.trim().toLowerCase();
   const showUnlabelledOnly = document.getElementById('unlabelledOnly').checked;
@@ -147,6 +148,32 @@ console.log("calling loadCurrentClip");
     showNoResultsMessage();
   }
 }
+	  */
+
+function applyFilters(resetIndex = true) {
+  const query = document.getElementById('labelSearch').value.trim().toLowerCase();
+  const showUnlabelledOnly = document.getElementById('unlabelledOnly').checked;
+
+  filteredClips = allClips.filter(clip => {
+    const labelText = (clip.description || clip.label || '').trim();
+    const isUnlabelled = labelText === '' || labelText.toLowerCase() === 'unlabelled';
+
+    if (showUnlabelledOnly && !isUnlabelled) return false;
+    if (query !== '' && !labelText.toLowerCase().includes(query)) return false;
+
+    return true;
+  });
+
+  if (resetIndex) {
+    activeIndex = 0;
+  }
+
+  updateSearchUI();
+
+  if (filteredClips.length === 0) {
+    showNoResultsMessage();
+  }
+}
 
 /**
  * Updates status text and UI counts.
@@ -158,9 +185,60 @@ function updateSearchUI() {
   }
 }
 
+	  function loadCurrentClip() {
+  if (!filteredClips || filteredClips.length === 0) {
+    showNoResultsMessage();
+    return;
+  }
+
+  // 1. Get current clip from filtered array
+  const currentClip = filteredClips[activeIndex];
+
+  // 2. Find its 1-based index in the master allClips array
+  const masterIndex = allClips.findIndex(c => c.filename === currentClip.clipFilename) + 1;
+
+  // 3. Update the UI index widget / counter display
+  // e.g., "Clip 14 of 282 (Filter result 2 of 5)"
+  const indexWidget = document.getElementById('clipIndexDisplay'); // adjust ID to match your HTML
+  if (indexWidget) {
+    indexWidget.textContent = `Clip ${masterIndex} of ${allClips.length} (${activeIndex + 1}/${filteredClips.length} filtered)`;
+  }
+
+  // 4. Construct updated URL with clip number + active filter state
+  const searchInput = document.getElementById('labelSearch').value.trim();
+  const unlabelledOnly = document.getElementById('unlabelledOnly').checked;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('clip', masterIndex);
+
+  if (searchInput) {
+    url.searchParams.set('search', searchInput);
+  } else {
+    url.searchParams.delete('search');
+  }
+
+  if (unlabelledOnly) {
+    url.searchParams.set('unlabelled', '1');
+  } else {
+    url.searchParams.delete('unlabelled');
+  }
+
+  // 5. Push URL state without reloading the page
+  window.history.replaceState({}, '', url);
+
+  // 6. Load video source
+  const videoPlayer = document.getElementById('videoPlayer');
+  videoPlayer.src = BASE_URL + currentClip.clipFilename;
+  videoPlayer.load();
+  videoPlayer.play().catch(err => console.log("Auto-play prevented:", err));
+
+  // Update label text display
+  document.getElementById('clipLabelDisplay').textContent = currentClip.description || "Unlabelled";
+}
 /**
  * Loads the active clip from filteredClips.
  */
+	  /*
 function loadCurrentClip() {
   if (filteredClips.length === 0) return;
 
@@ -181,6 +259,7 @@ console.log("loadCurrentClip: videoUrl = "+videoUrl);
   const displayLabel = currentClip.description || "Unlabelled";
   document.getElementById('clipLabelDisplay').textContent = displayLabel;
 }
+*/
 
 /**
  * Navigation handlers
@@ -384,23 +463,25 @@ console.log("loadClip: currentIndex = "+currentIndex);
   }
 
   /*
-  function nextClip() {
-    // Next Clip Button
-    const nextIdx = getNextClipIndex(currentIndex);
-    if (nextIdx !== currentIndex) {
-      loadClip(nextIdx);
-    }
-  }
+     function onCsvLoaded(parsedData) {
+  allClips = parsedData;
 
-  function prevClip() {
-    // Previous Clip Button
-    const prevIdx = getPreviousClipIndex(currentIndex);
-    if (prevIdx !== currentIndex) {
-      loadClip(prevIdx);
-    }
-  }
-  */
+  // Read initial query parameters from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchParam = urlParams.get('search') || '';
+  const unlabelledParam = urlParams.get('unlabelled') === '1';
+  const targetClipNum = parseInt(urlParams.get('clip'), 10);
 
+  // Set initial control values from URL parameters
+  const searchInput = document.getElementById('labelSearch');
+  const unlabelledCheckbox = document.getElementById('unlabelledOnly');
+
+  if (searchInput) searchInput.value = searchParam;
+  if (unlabelledCheckbox) unlabelledCheckbox.checked = unlabelledParam;
+
+  loadCurrentClip();
+}
+     */
 
   // ==========================================
   // 3. PAGE INITIALIZATION & SUBMIT HANDLER
@@ -410,14 +491,42 @@ console.log("loadClip: currentIndex = "+currentIndex);
   fetchAnnotations();
 
     // A. Check URL parameter on load (e.g. ?clip=150)
-    const urlParams = new URLSearchParams(window.location.search);
-    const clipParam = urlParams.get('clip');
+  // Read initial query parameters from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchParam = urlParams.get('search') || '';
+  const unlabelledParam = urlParams.get('unlabelled') === '1';
+  const targetClipNum = parseInt(urlParams.get('clip'), 10);
+
+  //  const urlParams = new URLSearchParams(window.location.search);
+    //const clipParam = urlParams.get('clip');
     const parsedIndex = parseClipNumber(clipParam);
 
     if (parsedIndex !== null) {
       currentIndex = parsedIndex;
     }
 
+  // Set initial control values from URL parameters
+  const searchInput = document.getElementById('labelSearch');
+  const unlabelledCheckbox = document.getElementById('unlabelledOnly');
+
+  if (searchInput) searchInput.value = searchParam;
+  if (unlabelledCheckbox) unlabelledCheckbox.checked = unlabelledParam;
+
+  // Filter the clips based on loaded UI settings
+  applyFilters(false); // Pass false to prevent auto-resetting activeIndex to 0
+
+  // If a specific ?clip=N was in the URL, set activeIndex to point to that item within filteredClips
+  if (targetClipNum && targetClipNum > 0 && targetClipNum <= allClips.length) {
+    const targetClip = allClips[targetClipNum - 1];
+    const matchIndex = filteredClips.findIndex(c => c.filename === targetClip.filename);
+
+    if (matchIndex !== -1) {
+      activeIndex = matchIndex;
+    }
+  }
+
+
+  /*
     // B. Load initial clip
     loadClip(currentIndex);
 
@@ -427,6 +536,7 @@ console.log("loadClip: currentIndex = "+currentIndex);
     const nextIdx = getNextClipIndex(currentIndex);
     loadClip(nextIdx);
   }
+  */
 });
 
     // C. Setup Enter key listener for the Jump Box
