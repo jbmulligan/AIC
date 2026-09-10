@@ -167,7 +167,7 @@ function loadCurrentClip() {
 console.log("loadCurrentClip: activeIndex = "+activeIndex);
   const currentClip = filteredClips[activeIndex];
 console.log("loadCurrentClip: currentClip = "+JSON.stringify(currentClip));
-  const videoUrl = BASE_URL + currentClip.filename;
+  const videoUrl = BASE_URL + currentClip.clipFilename;
 console.log("loadCurrentClip: videoUrl = "+videoUrl);
 
   const videoPlayer = document.getElementById('videoPlayer');
