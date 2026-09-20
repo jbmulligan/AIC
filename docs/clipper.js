@@ -44,7 +44,9 @@ function showIncludeClip(clip, query, showUnlabelledOnly) {
 
   return true;
 }
-
+/**
+ * Evaluates both the search query AND the "Unlabelled Only" checkbox.
+ */
 function applyFilters(resetIndex = true) {
   const searchEl = document.getElementById('labelSearch');
   const unlabelledEl = document.getElementById('unlabelledOnly');
@@ -52,7 +54,46 @@ function applyFilters(resetIndex = true) {
   const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
   const showUnlabelledOnly = unlabelledEl ? unlabelledEl.checked : false;
 
-  filteredClips = allAnnotations.filter(clip => showIncludeClip(clip, query, showUnlabelledOnly));
+  // Build a lookup set of filenames that have at least one valid annotation
+  const annotatedFilenames = new Set(
+    allAnnotations
+      .filter(item => (item.description || item.label || '').trim() !== '')
+      .map(item => item.clipFilename || item.filename)
+  );
+
+  // Filter across all 282 possible clips (1 to TOTAL_CLIPS)
+  filteredClips = [];
+
+  for (let i = 0; i < TOTAL_CLIPS; i++) {
+    const clipFilename = getClipFilename(i);
+    const isAnnotated = annotatedFilenames.has(clipFilename);
+    const isUnlabelled = !isAnnotated;
+
+    // 1. Evaluate 'Unlabelled Only' filter
+    if (showUnlabelledOnly && !isUnlabelled) {
+      continue;
+    }
+
+    // 2. Evaluate Text Search query
+    if (query !== '') {
+      // Find matching text in existing annotations for this clip
+      const matchingAnnotations = allAnnotations.filter(item => {
+        const itemFile = item.clipFilename || item.filename;
+        const itemDesc = (item.description || item.label || '').toLowerCase();
+        return itemFile === clipFilename && itemDesc.includes(query);
+      });
+
+      if (matchingAnnotations.length === 0) {
+        continue; // Skip if search text isn't found in this clip's labels
+      }
+    }
+
+    // Clip passed all active filters
+    filteredClips.push({
+      clipFilename: clipFilename,
+      description: isUnlabelled ? '' : 'Annotated'
+    });
+  }
 
   if (resetIndex) {
     activeIndex = 0;
@@ -63,9 +104,26 @@ function applyFilters(resetIndex = true) {
   if (filteredClips.length === 0) {
     showNoResultsMessage();
   } else {
+    // Clear any previous "No matching clips" message when results exist
+    const displayEl = document.getElementById('clipLabelDisplay');
+    if (displayEl) displayEl.textContent = '';
+    
     loadCurrentClip();
   }
-  console.log("Number of filtered clips: " + filteredClips.length);
+}
+
+// NEW
+function showNoResultsMessage() {
+  const videoPlayer = document.getElementById('videoPlayer');
+  if (videoPlayer) {
+    videoPlayer.pause();
+    videoPlayer.src = "";
+  }
+  const displayEl = document.getElementById('clipLabelDisplay');
+  if (displayEl) displayEl.textContent = "No matching clips found";
+  
+  const indexWidget = document.getElementById('clipIndexDisplay');
+  if (indexWidget) indexWidget.textContent = `0 of ${TOTAL_CLIPS} clips`;
 }
 
 function updateSearchUI() {
@@ -236,16 +294,6 @@ function prevClip() {
   if (filteredClips.length === 0) return;
   activeIndex = (activeIndex - 1 + filteredClips.length) % filteredClips.length;
   loadCurrentClip();
-}
-
-function showNoResultsMessage() {
-  const videoPlayer = document.getElementById('videoPlayer');
-  if (videoPlayer) {
-    videoPlayer.pause();
-    videoPlayer.src = "";
-  }
-  const displayEl = document.getElementById('clipLabelDisplay');
-  if (displayEl) displayEl.textContent = "No matching clips found";
 }
 
 function jumpToClipInput() {
