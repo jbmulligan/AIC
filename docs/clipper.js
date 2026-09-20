@@ -84,6 +84,84 @@ function loadCurrentClip() {
     return;
   }
 
+  // 1. Get active clip object
+  const currentClip = filteredClips[activeIndex];
+  const currentFilename = currentClip.clipFilename || getClipFilename(activeIndex);
+
+  // 2. Derive master 1-based index safely
+  let masterIndex = allAnnotations.findIndex(c => c.clipFilename === currentFilename) + 1;
+
+  // Fallback: If not found in allAnnotations by exact name, parse from "clip_XXX.mp4"
+  if (masterIndex <= 0) {
+    const match = currentFilename.match(/\d+/);
+    masterIndex = match ? parseInt(match[0], 10) : (activeIndex + 1);
+  }
+
+  // 3. Update URL with active clip and current filter states
+  const url = new URL(window.location.href);
+  url.searchParams.set('clip', masterIndex);
+
+  const searchInput = document.getElementById('labelSearch')?.value.trim();
+  const unlabelledOnly = document.getElementById('unlabelledOnly')?.checked;
+
+  if (searchInput) {
+    url.searchParams.set('search', searchInput);
+  } else {
+    url.searchParams.delete('search');
+  }
+
+  if (unlabelledOnly) {
+    url.searchParams.set('unlabelled', '1');
+  } else {
+    url.searchParams.delete('unlabelled');
+  }
+
+  // Push new state to address bar
+  window.history.replaceState({}, '', url.toString());
+
+  // 4. Update UI labels & counters
+  const clipTitle = document.getElementById("clipTitle");
+  if (clipTitle) {
+    clipTitle.textContent = `Clip ${masterIndex} of ${TOTAL_CLIPS} (${currentFilename})`;
+  }
+
+  const jumpInput = document.getElementById("jumpInput");
+  if (jumpInput) {
+    jumpInput.value = masterIndex;
+  }
+
+  const indexWidget = document.getElementById('clipIndexDisplay');
+  if (indexWidget) {
+    indexWidget.textContent = `Clip ${masterIndex} of ${TOTAL_CLIPS} (${activeIndex + 1}/${filteredClips.length} filtered)`;
+  }
+
+  // 5. Update Video Player
+  const videoPlayer = document.getElementById('videoPlayer');
+  if (videoPlayer) {
+    videoPlayer.pause();
+    videoPlayer.src = BASE_URL + currentFilename;
+    videoPlayer.load();
+    videoPlayer.currentTime = 0;
+
+    const playPromise = videoPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn("Auto-play prevented:", err);
+        videoPlayer.controls = true;
+      });
+    }
+  }
+
+  // 6. Fetch and render annotations for this exact clip
+  displayClipAnnotations(currentFilename);
+}
+
+function loadCurrentClip() {
+  if (!filteredClips || filteredClips.length === 0) {
+    showNoResultsMessage();
+    return;
+  }
+
   // 1. Get current clip from filtered array
   const currentClip = filteredClips[activeIndex];
 
@@ -228,15 +306,20 @@ function displayClipAnnotations(currentFilename) {
   const listEl = document.getElementById("annotationList");
   if (!listEl) return;
 
-  const matches = allAnnotations.filter(item => item.clipFilename === currentFilename && item.description);
+  // Filter annotations matching this clip's filename
+  const matches = allAnnotations.filter(item => {
+    const itemFile = item.clipFilename || item.filename;
+    const itemDesc = (item.description || item.label || '').trim();
+    return itemFile === currentFilename && itemDesc !== '';
+  });
 
   if (matches.length === 0) {
     listEl.innerHTML = "<span style='color: #28a745; font-weight: bold;'>Unannotated</span> — No entries for this clip yet.";
   } else {
     let html = `<ul style="margin: 0; padding-left: 20px;">`;
     matches.forEach(item => {
-      const user = item.userName || "Anonymous";
-      const desc = item.description || "";
+      const user = item.userName || item.user || "Anonymous";
+      const desc = item.description || item.label || "";
       html += `<li style="margin-bottom: 4px;"><strong>${user}:</strong> ${desc}</li>`;
     });
     html += `</ul>`;
